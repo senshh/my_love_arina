@@ -5,7 +5,6 @@ import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 # --- КОНФИГУРАЦИЯ ---
 API_TOKEN = os.getenv('API_TOKEN')
 TARGET_ADMIN_ID = 6324989741  # ID человека, который должен отвечать (число)
@@ -220,6 +219,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
