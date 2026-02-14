@@ -103,7 +103,7 @@ async def send_auto_compliment(user_id, reason_text=None):
     await bot.send_message(
         user_id,
         message_text,
-        parse_mode="HTML",
+        parse_mode="MarkdownV2",
         reply_markup=get_ask_keyboard()
     )
     if TARGET_ADMIN_ID in active_requests:
@@ -220,6 +220,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
