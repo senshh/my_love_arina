@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import random
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -219,4 +220,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
