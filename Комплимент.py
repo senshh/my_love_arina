@@ -1,13 +1,11 @@
 import asyncio
 import logging
-import os
 import random
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- КОНФИГУРАЦИЯ ---
-API_TOKEN = os.getenv('API_TOKEN')
 TARGET_ADMIN_ID = 6324989741  # ID человека, который должен отвечать (число)
 ACCEPT_TIMEOUT = 60          # 60 секунд на нажатие кнопки "Принять"
 ANSWER_TIMEOUT = 300         # 5 минут на написание текста
@@ -220,5 +218,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
