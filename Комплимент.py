@@ -80,7 +80,7 @@ def is_allowed(user_id: int) -> bool:
 
 def get_ask_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="> Получить ещё комплимент <", callback_data="ask_question")]
+        [InlineKeyboardButton(text="> Получить послание <", callback_data="ask_question")]
     ])
 
 
@@ -140,7 +140,7 @@ async def cmd_start(message: types.Message):
                              parse_mode="HTML")
         return
 
-    await message.answer("Привет! Нажми кнопку для комплимента:", reply_markup=get_ask_keyboard())
+    await message.answer("Привет! Нажми кнопку для послания:", reply_markup=get_ask_keyboard())
 
 
 @dp.callback_query(F.data == "ask_question")
@@ -222,6 +222,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
