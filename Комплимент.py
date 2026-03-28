@@ -151,11 +151,10 @@ async def cmd_admin_send(message: types.Message, command: CommandObject):
     target_username = parts[0].lower()
     # 2. Получаем текст с сохранением HTML-тегов
     # Отрезаем всё, что идет после юзернейма в исходном HTML-сообщении
-    full_html = message.html_text
     if len(parts) > 1:
         # Находим, где в HTML-строке заканчивается юзернейм, и берем всё после него
         # Это сохранит <b>болд</b>, <i>курсив</i> и даже спойлеры
-        text_to_send = full_html.split(parts[0], 1)[1].strip()
+        text_to_send = message.html_text.split(parts[0], 1)[1].strip()
     else:
         # Если админ написал только /send @username, берем случайный комплимент
         text_to_send = random.choice(RANDOM_ANSWERS)
