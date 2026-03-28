@@ -4,7 +4,8 @@ import random
 import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButto
+from aiogram.client.default import DefaultBotProperies
 # --- КОНФИГУРАЦИЯ ---
 API_TOKEN = os.getenv('API_TOKEN')
 TARGET_ADMIN_ID = 6324989741  # ID человека, который должен отвечать (число)
@@ -65,7 +66,7 @@ RANDOM_ANSWERS = [
 ]
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=API_TOKEN)
+bot = Bot(token=API_TOKEN, default=DefaultBotProperies(parse_mode="HTML"))
 dp = Dispatcher()
 
 active_requests = {}
