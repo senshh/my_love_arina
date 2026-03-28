@@ -84,7 +84,7 @@ def get_admin_decision_kb(user_id):
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="✅ Принять (60с)", callback_data=f"adm_accept_{user_id}"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm_decline_{user_id}")
+            InlineKeyboardButton(text="Отправить случайный", callback_data=f"adm_decline_{user_id}")
         ]
     ])
 
@@ -197,8 +197,6 @@ async def accept_handler(callback: types.CallbackQuery):
         active_requests[TARGET_ADMIN_ID] = {"user_id": user_id, "task": task, "status": "wait_answer"}
 
         await callback.message.edit_text("✅ Принято! У тебя 5 минут на текст.")
-        # ИСПРАВЛЕНО: Добавлен текст сообщения
-        await bot.send_message(user_id, "🚀 Админ принял запрос и уже пишет тебе...")
     else:
         await callback.answer("Запрос уже недействителен.")
     await callback.answer()
@@ -210,7 +208,7 @@ async def decline_handler(callback: types.CallbackQuery):
         user_id = active_requests[TARGET_ADMIN_ID]["user_id"]
         active_requests[TARGET_ADMIN_ID]["task"].cancel()
         await send_auto_compliment(user_id)
-        await callback.message.edit_text("Запрос отклонен.")
+        await callback.message.edit_text("✅ Отправлен случайный комплимент")
     await callback.answer()
 
 
