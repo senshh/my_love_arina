@@ -159,7 +159,7 @@ async def cmd_admin_send(message: types.Message, command: CommandObject):
     else:
         # Если админ написал только /send @username, берем случайный комплимент
         text_to_send = random.choice(RANDOM_ANSWERS)
-    users = load_users()
+    users = usernames_cache
     if target_username in users:
         try:
             # Отправляем с сохранением кнопок, как в твоем коде
