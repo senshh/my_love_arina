@@ -3,7 +3,7 @@ import logging
 import random
 import os
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 # --- КОНФИГУРАЦИЯ ---
 API_TOKEN = os.getenv('API_TOKEN')
@@ -69,18 +69,14 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 active_requests = {}
-
-
-# --- ПРОВЕРКА ДОСТУПА ---
+usernames_cache = {}
 def is_allowed(user_id: int) -> bool:
-    return user_id in ALLOWED_USERS
+    return user_id in ALLOWED_USERS or user_id == TARGET_ADMIN_ID
 
-
-# --- КЛАВИАТУРЫ ---
 
 def get_ask_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="> Получить послание <", callback_data="ask_question")]
+        [InlineKeyboardButton(text="> Получить ещё комплимент <", callback_data="ask_question")]
     ])
 
 
@@ -96,18 +92,12 @@ def get_admin_decision_kb(user_id):
 # --- ЛОГИКА ТАЙМЕРОВ ---
 
 async def send_auto_compliment(user_id, reason_text=None):
-    """Отправляет только комплимент, если причина не указана."""
     random_answer = random.choice(RANDOM_ANSWERS)
-
-    # Если причина (reason_text) передана — добавляем её, если нет — только текст комплимента
     message_text = f"{reason_text}\n\n{random_answer}" if reason_text else random_answer
-
-    await bot.send_message(
-        user_id,
-        message_text,
-        parse_mode="HTML",
-        reply_markup=get_ask_keyboard()
-    )
+    try:
+        await bot.send_message(user_id, message_text, parse_mode="HTML", reply_markup=get_ask_keyboard())
+    except Exception:
+        pass
     if TARGET_ADMIN_ID in active_requests:
         del active_requests[TARGET_ADMIN_ID]
 
@@ -115,8 +105,9 @@ async def send_auto_compliment(user_id, reason_text=None):
 async def wait_for_acceptance(user_id: int):
     try:
         await asyncio.sleep(ACCEPT_TIMEOUT)
-        await send_auto_compliment(user_id)
-        await bot.send_message(TARGET_ADMIN_ID, "⏰ Время на принятие запроса истекло.")
+        if TARGET_ADMIN_ID in active_requests and active_requests[TARGET_ADMIN_ID]["user_id"] == user_id:
+            await send_auto_compliment(user_id)
+            await bot.send_message(TARGET_ADMIN_ID, "⏰ Время на принятие запроса истекло.")
     except asyncio.CancelledError:
         pass
 
@@ -124,8 +115,9 @@ async def wait_for_acceptance(user_id: int):
 async def wait_for_answer(user_id: int):
     try:
         await asyncio.sleep(ANSWER_TIMEOUT)
-        await send_auto_compliment(user_id)
-        await bot.send_message(TARGET_ADMIN_ID, "⏰ 5 минут истекли. Отправлен авто-ответ.")
+        if TARGET_ADMIN_ID in active_requests and active_requests[TARGET_ADMIN_ID]["user_id"] == user_id:
+            await send_auto_compliment(user_id)
+            await bot.send_message(TARGET_ADMIN_ID, "⏰ 5 минут истекли. Отправлен авто-ответ.")
     except asyncio.CancelledError:
         pass
 
@@ -134,39 +126,64 @@ async def wait_for_answer(user_id: int):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Проверка доступа
     if not is_allowed(message.from_user.id):
-        await message.answer("У вас нет доступа к этому боту. ⛔️\nВаш ID: <code>{message.from_user.id}</code>",
-                             parse_mode="HTML")
+        await message.answer(f"У вас нет доступа. ⛔️\nВаш ID: {message.from_user.id}")
         return
 
-    await message.answer("Привет! Нажми кнопку для послания:", reply_markup=get_ask_keyboard())
+    # Сохраняем юзернейм пользователя в кэш
+    if message.from_user.username:
+        usernames_cache[f"@{message.from_user.username.lower()}"] = message.from_user.id
+
+    await message.answer("Привет! Нажми кнопку для комплимента:", reply_markup=get_ask_keyboard())
+
+
+# КОМАНДА ДЛЯ АДМИНА: /send @username текст
+@dp.message(Command("send"), F.from_user.id == TARGET_ADMIN_ID)
+async def cmd_admin_send(message: types.Message, command: CommandObject):
+    if not command.args:
+        await message.answer(
+            "Пример: <code>/send @username Привет</code> или <code>/send @username</code> (для случайного)")
+        return
+
+    parts = command.args.split(maxsplit=1)
+    target_username = parts[0].lower()
+    custom_text = parts[1] if len(parts) > 1 else random.choice(RANDOM_ANSWERS)
+
+    if target_username not in usernames_cache:
+        await message.answer(f"❌ Пользователь {target_username} не найден. Он должен хотя бы раз написать /start боту.")
+        return
+
+    target_id = usernames_cache[target_username]
+    try:
+        await bot.send_message(target_id, custom_text, reply_markup=get_ask_keyboard())
+        await message.answer(f"✅ Сообщение отправлено пользователю {target_username}")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при отправке: {e}")
 
 
 @dp.callback_query(F.data == "ask_question")
 async def ask_handler(callback: types.CallbackQuery):
-    # Проверка доступа
     if not is_allowed(callback.from_user.id):
         await callback.answer("Доступ запрещен!", show_alert=True)
         return
 
-    user_id = callback.from_user.id
-
     if TARGET_ADMIN_ID in active_requests:
-        await callback.answer("Подбираю комплимент, подожди немного ❤", show_alert=True)
+        await callback.answer("Подбираю комплимент, подожди немного ❤️", show_alert=True)
         return
 
+    user_id = callback.from_user.id
     task = asyncio.create_task(wait_for_acceptance(user_id))
     active_requests[TARGET_ADMIN_ID] = {"user_id": user_id, "task": task, "status": "wait_accept"}
 
     await bot.send_message(
         TARGET_ADMIN_ID,
-        f"🔔 <b>Новый запрос!</b>\nОт: {callback.from_user.full_name}\nУ тебя 60 секунд, чтобы ПРИНЯТЬ.",
+        f"🔔 <b>Новый запрос!</b>\nОт: {callback.from_user.full_name}\nУ тебя 60 секунд на принятие.",
         parse_mode="HTML",
         reply_markup=get_admin_decision_kb(user_id)
     )
-    await callback.message.edit_reply_markup(reply_markup=None)  # Убираем кнопку у старого сообщения
-    await callback.message.answer("Запрос отправлен... Ожидай ❤️")  # Отправляем новое уведомление
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer("Запрос отправлен... Ожидай ❤️")
+    await callback.answer()
 
 
 @dp.callback_query(F.data.startswith("adm_accept_"))
@@ -177,11 +194,11 @@ async def accept_handler(callback: types.CallbackQuery):
         active_requests[TARGET_ADMIN_ID]["task"].cancel()
 
         task = asyncio.create_task(wait_for_answer(user_id))
-        active_requests[TARGET_ADMIN_ID]["task"] = task
-        active_requests[TARGET_ADMIN_ID]["status"] = "wait_answer"
+        active_requests[TARGET_ADMIN_ID] = {"user_id": user_id, "task": task, "status": "wait_answer"}
 
         await callback.message.edit_text("✅ Принято! У тебя 5 минут на текст.")
-        await bot.send_message(user_id)
+        # ИСПРАВЛЕНО: Добавлен текст сообщения
+        await bot.send_message(user_id, "🚀 Админ принял запрос и уже пишет тебе...")
     else:
         await callback.answer("Запрос уже недействителен.")
     await callback.answer()
@@ -192,8 +209,7 @@ async def decline_handler(callback: types.CallbackQuery):
     if TARGET_ADMIN_ID in active_requests:
         user_id = active_requests[TARGET_ADMIN_ID]["user_id"]
         active_requests[TARGET_ADMIN_ID]["task"].cancel()
-
-        await send_auto_compliment(user_id, )
+        await send_auto_compliment(user_id)
         await callback.message.edit_text("Запрос отклонен.")
     await callback.answer()
 
@@ -205,13 +221,11 @@ async def admin_text_handler(message: types.Message):
 
     req = active_requests[TARGET_ADMIN_ID]
     req["task"].cancel()
-
     try:
         await message.copy_to(chat_id=req["user_id"], reply_markup=get_ask_keyboard())
         await message.answer("✅ Отправлено!")
     except Exception as e:
         await message.answer(f"Ошибка: {e}")
-
     del active_requests[TARGET_ADMIN_ID]
 
 
@@ -222,7 +236,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
 
 
 
