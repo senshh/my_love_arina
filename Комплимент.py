@@ -141,28 +141,38 @@ async def cmd_start(message: types.Message):
 
 # КОМАНДА ДЛЯ АДМИНА: /send @username текст
 @dp.message(Command("send"), F.from_user.id == TARGET_ADMIN_ID)
+@dp.message(Command("send"), F.from_user.id == TARGET_ADMIN_ID)
 async def cmd_admin_send(message: types.Message, command: CommandObject):
     if not command.args:
-        await message.answer(
-            "Пример: <code>/send @username Привет</code> или <code>/send @username</code> (для случайного)")
+        await message.answer("Формат: <code>/send @username текст</code>")
         return
-
+    # 1. Разбиваем простые аргументы, чтобы найти юзернейм
     parts = command.args.split(maxsplit=1)
     target_username = parts[0].lower()
-    custom_text = parts[1] if len(parts) > 1 else random.choice(RANDOM_ANSWERS)
-
-    if target_username not in usernames_cache:
-        await message.answer(f"❌ Пользователь {target_username} не найден. Он должен хотя бы раз написать /start боту.")
-        return
-
-    target_id = usernames_cache[target_username]
-    try:
-        await bot.send_message(target_id, custom_text, reply_markup=get_ask_keyboard())
-        await message.answer(f"✅ Сообщение отправлено пользователю {target_username}")
-    except Exception as e:
-        await message.answer(f"❌ Ошибка при отправке: {e}")
-
-
+    # 2. Получаем текст с сохранением HTML-тегов
+    # Отрезаем всё, что идет после юзернейма в исходном HTML-сообщении
+    full_html = message.html_text
+    if len(parts) > 1:
+        # Находим, где в HTML-строке заканчивается юзернейм, и берем всё после него
+        # Это сохранит <b>болд</b>, <i>курсив</i> и даже спойлеры
+        text_to_send = full_html.split(parts[0], 1)[1].strip()
+    else:
+        # Если админ написал только /send @username, берем случайный комплимент
+        text_to_send = random.choice(RANDOM_ANSWERS)
+    users = load_users()
+    if target_username in users:
+        try:
+            # Отправляем с сохранением кнопок, как в твоем коде
+            await bot.send_message(
+                chat_id=users[target_username], 
+                text=text_to_send, 
+                reply_markup=get_ask_keyboard()
+            )
+            await message.answer(f"✅ Отправлено пользователю {target_username} с сохранением оформления")
+        except Exception as e:
+            await message.answer(f"❌ Ошибка при отправке: {e}")
+    else:
+        await message.answer(f"❌ Пользователь {target_username} не найден в базе.")
 @dp.callback_query(F.data == "ask_question")
 async def ask_handler(callback: types.CallbackQuery):
     if not is_allowed(callback.from_user.id):
