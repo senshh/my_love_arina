@@ -70,6 +70,8 @@ dp = Dispatcher()
 
 active_requests = {}
 usernames_cache = {}
+usernames_cache['@mademoiselle_ar'] = 5648419861
+usernames_cache['@filimonrobot'] = 1767978286
 def is_allowed(user_id: int) -> bool:
     return user_id in ALLOWED_USERS or user_id == TARGET_ADMIN_ID
 
