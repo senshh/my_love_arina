@@ -4,7 +4,7 @@ import random
 import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButto
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.client.default import DefaultBotProperies
 # --- КОНФИГУРАЦИЯ ---
 API_TOKEN = os.getenv('API_TOKEN')
